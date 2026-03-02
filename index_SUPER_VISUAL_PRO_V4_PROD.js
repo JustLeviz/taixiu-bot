@@ -100,8 +100,9 @@ client.once(Events.ClientReady, async () => {
 
 // ===== INTERACTION =====
 client.on(Events.InteractionCreate, async interaction => {
-  try {
-    if (!interaction.isChatInputCommand()) return;
+    try {
+
+        if (!interaction.isChatInputCommand()) return;
 
     const user = getUser(interaction.user.id);
 
