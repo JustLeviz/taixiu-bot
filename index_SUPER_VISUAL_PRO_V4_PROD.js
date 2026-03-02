@@ -247,11 +247,11 @@ client.login(TOKEN);
 
 // ===== RENDER PORT FIX =====
 const http = require("http");
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Bot is running");
-}).listen(PORT, () => {
-  console.log(`🌐 Port opened on ${PORT}`);
+}).listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Listening on ${PORT}`);
 });
