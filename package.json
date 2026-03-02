@@ -2,9 +2,9 @@
   "name": "casino-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index_SUPER_VISUAL_PRO_V4_PROD.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index_SUPER_VISUAL_PRO_V4_PROD.js"
   },
   "keywords": [],
   "author": "",
