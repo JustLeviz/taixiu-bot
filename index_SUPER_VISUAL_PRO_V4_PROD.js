@@ -89,18 +89,18 @@ const commands = [
 
 // ===== READY =====
 client.once(Events.ClientReady, async () => {
-  console.log("✅ Bot Online");
+  console.log("✅ Bot Online:", client.user?.tag);
 
-  const channel = await client.channels.fetch(GAME_CHANNEL_ID);
-  if (!channel) return;
+  const channel = await client.channels.fetch(GAME_CHANNEL_ID).catch(() => null);
+  if (!channel) return console.log("❌ Không fetch được GAME_CHANNEL_ID");
 
   setInterval(() => startRound(channel), BET_TIME + 5000);
   startRound(channel);
 });
-
 // ===== INTERACTION =====
 client.on(Events.InteractionCreate, async interaction => {
-    try {
+ console.log("⚡ Interaction:", interaction.isChatInputCommand() ? interaction.commandName : "not-command");
+  try {
 
         if (!interaction.isChatInputCommand()) return;
 
