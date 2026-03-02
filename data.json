@@ -1,0 +1,52 @@
+{
+  "users": {
+    "462964822498213888": {
+      "money": 1066701,
+      "wins": 1,
+      "loses": 1,
+      "lastDaily": 0,
+      "lose": null
+    },
+    "1097127699065077812": {
+      "money": 140000,
+      "wins": 0,
+      "loses": 0,
+      "lastDaily": 1772476982703
+    },
+    "585422403711139841": {
+      "money": 0,
+      "wins": 0,
+      "loses": 0,
+      "lastDaily": 0
+    },
+    "1293648977853681754": {
+      "money": 10000
+    }
+  },
+  "jackpot": 122710,
+  "history": [
+    "TÀI",
+    "TÀI",
+    "XỈU",
+    "XỈU",
+    "XỈU",
+    "XỈU",
+    "XỈU",
+    "XỈU",
+    "TÀI",
+    "TÀI",
+    "TÀI",
+    "XỈU",
+    "XỈU",
+    "XỈU",
+    "XỈU"
+  ],
+  "currentRound": {
+    "bets": {},
+    "totalTai": 0,
+    "totalXiu": 0,
+    "endTime": 0,
+    "result": null,
+    "preview": null
+  }
+}
