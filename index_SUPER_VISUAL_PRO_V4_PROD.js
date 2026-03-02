@@ -272,9 +272,7 @@ client.on(Events.InteractionCreate, async interaction => {
             return interaction.reply({ content: "Chưa có dữ liệu người chơi.", ephemeral: true });
           }
 
-          let text = "📊 DANH SÁCH TOÀN BỘ NGƯỜI CHƠI
-
-";
+          let text = "📋 DANH SÁCH TOÀN BỘ NGƯỜI CHƠI\n";
           for (let i = 0; i < sorted.length; i++) {
             const [id, info] = sorted[i];
             text += `${i + 1}. <@${id}> - ${formatVND(info.money)} VND
