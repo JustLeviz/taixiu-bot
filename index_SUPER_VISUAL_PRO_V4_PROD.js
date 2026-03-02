@@ -255,8 +255,7 @@ client.on(Events.InteractionCreate, async interaction => {
             .sort((a, b) => (b[1].money || 0) - (a[1].money || 0))
             .slice(0, 5)
             .map((u, i) => `${i + 1}. <@${u[0]}> - ${formatVND(u[1].money)}`)
-            .join("
-");
+            .join("\n");
           return interaction.reply("🏆 TOP GIÀU:
 " + (top || "Chưa có dữ liệu."));
         }
