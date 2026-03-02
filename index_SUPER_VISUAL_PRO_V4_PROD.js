@@ -250,15 +250,19 @@ client.on(Events.InteractionCreate, async interaction => {
           return interaction.reply(`🎯 Đã set vòng sau: ${data.riggedNext}`);
         }
 
-        case "top": {
-          const top = Object.entries(data.users)
-            .sort((a, b) => (b[1].money || 0) - (a[1].money || 0))
-            .slice(0, 5)
-            .map((u, i) => `${i + 1}. <@${u[0]}> - ${formatVND(u[1].money)}`)
-            .join("\n");
-          return interaction.reply("🏆 TOP GIÀU:
-" + (top || "Chưa có dữ liệu."));
-        }
+       case "top": {
+  const top =
+    Object.entries(data.users)
+      .sort((a, b) => (b[1].money || 0) - (a[1].money || 0))
+      .slice(0, 5)
+      .map(([id, info], i) => `${i + 1}. <@${id}> - ${formatVND(info.money || 0)}`)
+      .join("\n");
+
+  return interaction.reply({
+ content: `🏆 TOP GIÀU:\n${top || "Chưa có dữ liệu.."}`,
+  ephemeral: true
+});
+}
 
         case "allmoney": {
           const sorted = Object.entries(data.users)
