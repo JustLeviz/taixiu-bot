@@ -1,5 +1,5 @@
 // ===============================
-//  SUPER VISUAL PRO V4 - DEBUG + FIX (RENDER SAFE)
+//  SUPER VISUAL PRO V4 - CLEAN FIX (Render + Slash OK)
 // ===============================
 
 try { require("dotenv").config(); } catch (e) {}
@@ -21,38 +21,32 @@ const {
 const fs = require("fs");
 const http = require("http");
 
-// ===== HARD DEBUG: show crashes =====
-process.on("unhandledRejection", (reason) => {
-  console.error("❌ UNHANDLED_REJECTION:", reason);
-});
-process.on("uncaughtException", (err) => {
-  console.error("❌ UNCAUGHT_EXCEPTION:", err);
-});
+// ===== HARD LOG / CRASH GUARD =====
+process.on("unhandledRejection", (e) => console.error("❌ unhandledRejection:", e));
+process.on("uncaughtException", (e) => console.error("❌ uncaughtException:", e));
 
 // ===== CONFIG =====
-const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
-const CLIENT_ID = (process.env.CLIENT_ID || "").trim();
-const GUILD_ID = (process.env.GUILD_ID || "").trim();
-const GAME_CHANNEL_ID = (process.env.GAME_CHANNEL_ID || "").trim();
+const DISCORD_TOKEN = (process.env.DISCORD_TOKEN || "").trim();
+const CLIENT_ID = (process.env.CLIENT_ID || "1478077058512060561").trim();
+const GUILD_ID = (process.env.GUILD_ID || "1279852470306082817").trim();
+const GAME_CHANNEL_ID = (process.env.GAME_CHANNEL_ID || "1477815093143011512").trim();
 
+// Game config
 const BET_TIME = 30000;
 const DAILY_AMOUNT = 50000;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
+// ===== BOOT CHECK =====
 console.log("=== BOOT CONFIG CHECK ===");
-console.log("NODE_ENV:", process.env.NODE_ENV);
-console.log("TOKEN len:", TOKEN.length, "TOKEN tail4:", TOKEN.slice(-4) || "none");
-console.log("CLIENT_ID:", CLIENT_ID || "MISSING");
-console.log("GUILD_ID:", GUILD_ID || "MISSING");
-console.log("GAME_CHANNEL_ID:", GAME_CHANNEL_ID || "MISSING");
+console.log("NODE_ENV:", process.env.NODE_ENV || "(none)");
+console.log("TOKEN len:", DISCORD_TOKEN ? DISCORD_TOKEN.length : 0, "TOKEN tail:", DISCORD_TOKEN ? DISCORD_TOKEN.slice(-4) : "none");
+console.log("CLIENT_ID:", CLIENT_ID);
+console.log("GUILD_ID :", GUILD_ID);
+console.log("GAME_CHANNEL_ID:", GAME_CHANNEL_ID);
 console.log("=========================");
 
-if (!TOKEN) {
-  console.error("❌ Missing DISCORD_TOKEN (Render ENV not set / has spaces?)");
-  process.exit(1);
-}
-if (!CLIENT_ID || !GUILD_ID) {
-  console.error("❌ Missing CLIENT_ID or GUILD_ID (Render ENV not set)");
+if (!DISCORD_TOKEN) {
+  console.error("❌ Missing DISCORD_TOKEN (Render ENV not set / has spaces / duplicate key?)");
   process.exit(1);
 }
 
@@ -61,18 +55,16 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
+client.on("error", (e) => console.error("❌ client error:", e));
+client.on("shardError", (e) => console.error("❌ shardError:", e));
+
 // ===== DATA =====
-const DATA_PATH = "./data.json";
-let data = fs.existsSync(DATA_PATH)
-  ? JSON.parse(fs.readFileSync(DATA_PATH, "utf8"))
+let data = fs.existsSync("./data.json")
+  ? JSON.parse(fs.readFileSync("./data.json", "utf8"))
   : { users: {}, history: [], riggedNext: null };
 
 function saveData() {
-  try {
-    fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
-  } catch (e) {
-    console.error("❌ saveData failed (filesystem):", e);
-  }
+  fs.writeFileSync("./data.json", JSON.stringify(data, null, 2));
 }
 
 function getUser(id) {
@@ -94,73 +86,80 @@ const commands = [
   new SlashCommandBuilder()
     .setName("allmoney")
     .setDescription("Xem toàn bộ tiền")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ].map(c => c.toJSON());
 
 async function registerCommands() {
-  console.log("🔧 Registering slash commands...");
-  const rest = new REST({ version: "10" }).setToken(TOKEN);
   try {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-      body: commands
-    });
+    const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
+    console.log("🔁 Registering slash commands...");
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
     console.log("✅ Slash commands registered OK");
-  } catch (e) {
-    console.error("❌ Register commands FAILED:", e);
+  } catch (err) {
+    console.error("❌ Register commands FAILED:", err);
   }
 }
 
 // ===== READY =====
 client.once(Events.ClientReady, async () => {
-  console.log("✅ Bot Online:", client.user?.tag);
+  console.log("✅ READY:", client.user?.tag);
 
+  // Register commands on boot (safe)
   await registerCommands();
 
-  if (!GAME_CHANNEL_ID) {
-    console.log("⚠️ GAME_CHANNEL_ID missing -> skip game loop");
-    return;
-  }
+  // Fetch channel
+  const channel = await client.channels.fetch(GAME_CHANNEL_ID).catch((e) => {
+    console.error("❌ Fetch GAME_CHANNEL_ID failed:", e);
+    return null;
+  });
 
-  const channel = await client.channels.fetch(GAME_CHANNEL_ID).catch(() => null);
   if (!channel) {
-    console.log("❌ Không fetch được GAME_CHANNEL_ID (bot thiếu quyền / sai ID / không cùng guild)");
+    console.log("❌ Không fetch được GAME_CHANNEL_ID -> check channel id / bot permission / bot in guild");
     return;
   }
 
+  console.log("✅ Game channel OK:", channel?.id);
+
+  // Start game loop
   setInterval(() => startRound(channel), BET_TIME + 5000);
   startRound(channel);
 });
 
 // ===== INTERACTION =====
-client.on(Events.InteractionCreate, async interaction => {
-  console.log("⚡ Interaction:", interaction.type, interaction.isChatInputCommand() ? interaction.commandName : "not-command");
-
+client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    // Log để biết event có chạy hay không
+    console.log("⚡ Interaction:", interaction.type, interaction.isChatInputCommand() ? interaction.commandName : "not-command");
+
     if (!interaction.isChatInputCommand()) return;
+
+    // ACK sớm để tránh "Ứng dụng không phản hồi"
+    // (riêng balance trả nhanh thì vẫn ok, nhưng ACK sớm cho chắc)
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true }).catch(() => {});
+    }
 
     const user = getUser(interaction.user.id);
 
     switch (interaction.commandName) {
-      case "balance":
-        return interaction.reply({
+      case "balance": {
+        return interaction.editReply({
           content: `💰 ${formatVND(user.money)} VND`,
-          ephemeral: true
         });
+      }
 
       case "daily": {
         const now = Date.now();
         if (now - user.lastDaily < DAILY_COOLDOWN_MS) {
-          return interaction.reply({
-            content: "⏳ Chưa đủ 24h.",
-            ephemeral: true
-          });
+          return interaction.editReply({ content: "⏳ Chưa đủ 24h." });
         }
+
         user.money += DAILY_AMOUNT;
         user.lastDaily = now;
         saveData();
-        return interaction.reply({
+
+        return interaction.editReply({
           content: `🎁 Nhận ${formatVND(DAILY_AMOUNT)} VND`,
-          ephemeral: true
         });
       }
 
@@ -168,11 +167,11 @@ client.on(Events.InteractionCreate, async interaction => {
         const top = Object.entries(data.users)
           .sort((a, b) => (b[1].money || 0) - (a[1].money || 0))
           .slice(0, 5)
-          .map((u, i) => `${i + 1}. <@${u[0]}> - ${formatVND(u[1].money)}`)
+          .map((u, i) => `${i + 1}. <@${u[0]}> - ${formatVND(u[1].money)} VND`)
           .join("\n");
 
-        return interaction.reply({
-          content: `🏆 TOP GIÀU:\n${top || "Chưa có dữ liệu."}`
+        return interaction.editReply({
+          content: `🏆 TOP GIÀU:\n${top || "Chưa có dữ liệu."}`,
         });
       }
 
@@ -180,11 +179,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const sorted = Object.entries(data.users)
           .sort((a, b) => (b[1].money || 0) - (a[1].money || 0));
 
-        if (!sorted.length)
-          return interaction.reply({
-            content: "Chưa có dữ liệu.",
-            ephemeral: true
-          });
+        if (!sorted.length) return interaction.editReply({ content: "Chưa có dữ liệu." });
 
         let text = `📊 DANH SÁCH TOÀN BỘ NGƯỜI CHƠI\n\n`;
         for (let i = 0; i < sorted.length; i++) {
@@ -192,17 +187,23 @@ client.on(Events.InteractionCreate, async interaction => {
           text += `${i + 1}. <@${id}> - ${formatVND(info.money)} VND\n`;
         }
 
-        return interaction.reply({
+        return interaction.editReply({
           content: text.slice(0, 2000),
-          ephemeral: true
         });
       }
+
+      default:
+        return interaction.editReply({ content: "Lệnh không hợp lệ." });
     }
   } catch (err) {
     console.error("❌ Interaction handler error:", err);
+
+    // Nếu chưa reply thì reply fallback
     try {
-      if (!interaction.replied) {
-        await interaction.reply({ content: "❌ Lỗi xử lý lệnh.", ephemeral: true });
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: "❌ Có lỗi xảy ra.", ephemeral: true });
+      } else {
+        await interaction.editReply({ content: "❌ Có lỗi xảy ra." });
       }
     } catch {}
   }
@@ -248,12 +249,14 @@ async function startRound(channel) {
           ],
           components: [row]
         });
-      } catch {
+      } catch (e) {
+        console.error("msg.edit failed:", e?.message || e);
         clearInterval(timer);
       }
     }, 1000);
+
   } catch (err) {
-    console.error("startRound error:", err);
+    console.error("❌ startRound error:", err);
   }
 }
 
@@ -271,25 +274,23 @@ async function endRound(msg) {
       ],
       components: []
     });
+
   } catch (err) {
-    console.error("endRound error:", err);
+    console.error("❌ endRound error:", err);
   }
 }
 
-// ===== LOGIN (IMPORTANT) =====
-(async () => {
-  console.log("🔑 Logging in Discord...");
-  try {
-    await client.login(TOKEN);
-    console.log("🔥 Discord login OK");
-  } catch (e) {
-    console.error("❌ Discord login FAILED:", e);
+// ===== LOGIN =====
+client.login(DISCORD_TOKEN)
+  .then(() => console.log("🔥 Discord login OK"))
+  .catch(err => {
+    console.error("❌ Discord login FAILED:", err);
     process.exit(1);
-  }
-})();
+  });
 
 // ===== RENDER PORT FIX =====
 const PORT = process.env.PORT || 10000;
+
 http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Bot is running");
